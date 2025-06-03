@@ -1,15 +1,29 @@
 # GestorBiblioteca.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from modelos import UsuarioDB, MaterialDB, PrestamoDB
+from modelos import Base, UsuarioDB, MaterialDB, PrestamoDB
 from datetime import datetime, timedelta
 import uuid
+import os
 
 class GestorBiblioteca:
-    def __init__(self, db_url="sqlite:///biblioteca/biblioteca.db"):
-        engine = create_engine(db_url)
-        Session = sessionmaker(bind=engine)
+    def __init__(self):
+        # Визначаємо шлях до бази даних у поточній папці
+        db_path = os.path.join(os.path.dirname(__file__), 'biblioteca.db')
+        db_uri = f'sqlite:///{db_path}'
+        
+        print(f"Підключення до бази даних: {db_path}")
+        
+        # Створюємо рушій та підключаємось до бази даних
+        self.engine = create_engine(db_uri)
+        
+        # Створюємо фабрику сесій
+        Session = sessionmaker(bind=self.engine)
         self.session = Session()
+        
+        # Створюємо всі таблиці, якщо вони ще не існують
+        Base.metadata.create_all(self.engine)
+        print("Підключення до бази даних успішне")
 
     def agregar_usuario(self, nombre, apellido):
         usuario = UsuarioDB(nombre=nombre, apellido=apellido)
@@ -90,3 +104,9 @@ class GestorBiblioteca:
             "apellido": usuario.apellido,
             "prestamos": prestamos
         }
+
+    def __del__(self):
+        # Закриваємо сесію при знищенні об'єкта
+        if hasattr(self, 'session'):
+            self.session.close()
+            print("З'єднання з базою даних закрито")

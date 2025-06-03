@@ -1,10 +1,13 @@
 # modelos.py
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey, create_engine
 from sqlalchemy.orm import declarative_base, relationship
 import uuid
+import os
 from datetime import datetime, timedelta
 
 Base = declarative_base()
+
+
 
 class UsuarioDB(Base):
     __tablename__ = 'usuarios'
@@ -42,10 +45,21 @@ class PrestamoDB(Base):
     material = relationship("MaterialDB", back_populates="prestamos")
 
 if __name__ == "__main__":
-    # Crear las tablas en la base de datos
-
-    from sqlalchemy import create_engine
-    engine = create_engine('sqlite:///biblioteca/biblioteca.db')
-    Base.metadata.drop_all(engine) # Eliminar las tablas si ya existen
-    Base.metadata.create_all(engine)
-    print("Tablas creadas")
+    # Шлях до бази даних у поточній папці
+    db_path = 'biblioteca.db'
+    db_uri = f'sqlite:///{db_path}'
+    
+    print(f"Спроба створити базу даних: {os.path.abspath(db_path)}")
+    
+    # Видаляємо існуючу базу даних, якщо вона є
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        print("Стара база даних видалена")
+    
+    try:
+        engine = create_engine(db_uri)
+        Base.metadata.create_all(engine)
+        print("Базу даних успішно створено!")
+        print(f"Розташування: {os.path.abspath(db_path)}")
+    except Exception as e:
+        print(f"Помилка при створенні бази даних: {e}")
