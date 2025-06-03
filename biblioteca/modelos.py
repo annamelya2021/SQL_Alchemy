@@ -19,7 +19,9 @@ class UsuarioDB(Base):
 
 class MaterialDB(Base):
     __tablename__ = 'materiales'
-    codigo_inventario = Column(String, primary_key=True)
+    
+    # Додаємо автоматичне створення коду інвентаризації
+    codigo_inventario = Column(String, primary_key=True, default=lambda: f"MAT-{uuid.uuid4().hex[:8].upper()}")
     titulo = Column(String)
     tipo = Column(String)  # 'libro', 'revista', 'dvd'
     autor = Column(String, nullable=True)
@@ -29,6 +31,8 @@ class MaterialDB(Base):
     numero_edicion = Column(String, nullable=True)
     duracion = Column(Integer, nullable=True)
     director = Column(String, nullable=True)
+    
+    # Додаємо поле для доступності
     disponible = Column(Boolean, default=True)
     
     prestamos = relationship("PrestamoDB", back_populates="material")

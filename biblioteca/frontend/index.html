@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бібліотечна система</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Бібліотечна система</h1>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab('usuarios')">Користувачі</button>
+            <button class="tab-button" onclick="openTab('materiales')">Матеріали</button>
+            <button class="tab-button" onclick="openTab('prestamos')">Позики</button>
+        </div>
+        
+        <!-- Користувачі -->
+        <div id="usuarios" class="tab-content" style="display: block;">
+            <h2>Користувачі</h2>
+            <form id="usuario-form">
+                <input type="text" id="nombre" placeholder="Ім'я" required>
+                <input type="text" id="apellido" placeholder="Прізвище" required>
+                <button type="submit">Додати користувача</button>
+            </form>
+            <div id="usuarios-list"></div>
+        </div>
+        
+        <!-- Матеріали -->
+        <div id="materiales" class="tab-content">
+            <h2>Матеріали</h2>
+            <form id="material-form">
+                <select id="tipo-material" required>
+                    <option value="">Оберіть тип</option>
+                    <option value="libro">Книга</option>
+                    <option value="revista">Журнал</option>
+                    <option value="dvd">DVD</option>
+                </select>
+                <input type="text" id="titulo" placeholder="Назва" required>
+                <div id="campos-adicionales"></div>
+                <button type="submit">Додати матеріал</button>
+            </form>
+            <div id="materiales-list"></div>
+        </div>
+        
+        <!-- Позики -->
+        <div id="prestamos" class="tab-content">
+            <h2>Позики</h2>
+            <form id="prestamo-form">
+                <input type="text" id="id-usuario" placeholder="ID користувача" required>
+                <input type="text" id="id-material" placeholder="Код матеріалу" required>
+                <button type="submit">Створити позику</button>
+            </form>
+            <div id="prestamos-list"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

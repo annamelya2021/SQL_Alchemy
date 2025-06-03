@@ -1,81 +1,128 @@
 from fastapi import FastAPI, HTTPException
-import pickle
-from uuid import uuid4 as uuid 
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 from datetime import datetime
-app = FastAPI()
+import uvicorn
+import os
+from biblioteca.modelos import Base, UsuarioDB, MaterialDB, PrestamoDB
+from biblioteca.GestorBiblioteca import GestorBiblioteca
+app = FastAPI(title="API Бібліотеки")
 
-############### PERSISTENCIA DE DATOS ###############
-# Es mejor usar una base de datos, por supuesto.
-# Función para guardar datos en un archivo pickle
-def guarda_datos(publicaciones):
-    with open("publicaciones.pckl", 'wb') as archivo:
-        pickle.dump(publicaciones, archivo)
+# Дозволяємо CORS для всіх джерел
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Función para cargar datos desde un archivo pickle
-def carga_datos():
+# Моделі Pydantic для валідації даних
+class UsuarioBase(BaseModel):
+    nombre: str
+    apellido: str
+
+class UsuarioCreate(UsuarioBase):
+    pass
+
+class UsuarioResponse(UsuarioBase):
+    id_usuario: str
+    
+    class Config:
+        from_attributes = True
+
+class MaterialBase(BaseModel):
+    titulo: str
+    tipo: str  # 'libro', 'revista', 'dvd'
+    autor: Optional[str] = None
+    isbn: Optional[str] = None
+    numero_paginas: Optional[int] = None
+    fecha_publicacion: Optional[str] = None
+    numero_edicion: Optional[str] = None
+    duracion: Optional[int] = None
+
+class MaterialCreate(MaterialBase):
+    pass
+
+class MaterialResponse(MaterialBase):
+    codigo_inventario: str
+    
+    class Config:
+        from_attributes = True
+
+class PrestamoBase(BaseModel):
+    id_usuario: str
+    id_material: str
+
+class PrestamoCreate(PrestamoBase):
+    pass
+
+class PrestamoResponse(PrestamoBase):
+    id: int
+    fecha_prestamo: datetime
+    fecha_devolucion: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Ініціалізація менеджера бібліотеки
+gestor = GestorBiblioteca()
+
+# Користувачі
+@app.post("/usuarios/", response_model=UsuarioResponse)
+def crear_usuario(usuario: UsuarioCreate):
+    nuevo_usuario = UsuarioDB(**usuario.dict())
+    gestor.session.add(nuevo_usuario)
+    gestor.session.commit()
+    gestor.session.refresh(nuevo_usuario)
+    return nuevo_usuario
+
+@app.get("/usuarios/", response_model=List[UsuarioResponse])
+def listar_usuarios():
+    return gestor.session.query(UsuarioDB).all()
+
+# Матеріали
+@app.post("/materiales/", response_model=MaterialResponse)
+def crear_material(material: MaterialCreate):
     try:
-        with open("publicaciones.pckl", 'rb') as archivo:
-            publicaciones = pickle.load(archivo)
-        return publicaciones
-    except FileNotFoundError:
-        return []
+        # Конвертуємо Pydantic модель у словник
+        material_data = material.dict()
+        
+        # Створюємо новий матеріал
+        nuevo_material = MaterialDB(**material_data)
+        
+        # Додаємо та зберігаємо зміни
+        gestor.session.add(nuevo_material)
+        gestor.session.commit()
+        gestor.session.refresh(nuevo_material)
+        
+        return nuevo_material
+    except Exception as e:
+        gestor.session.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
-publicaciones = carga_datos()
+@app.get("/materiales/", response_model=List[MaterialResponse])
+def listar_materiales():
+    return gestor.session.query(MaterialDB).all()
 
-@app.get("/")
-def read_root():
-    return {"message": "Bienvenido a la biblioteca"}
+# Позики
+@app.post("/prestamos/", response_model=PrestamoResponse)
+def crear_prestamo(prestamo: PrestamoCreate):
+    nuevo_prestamo = PrestamoDB(**prestamo.dict())
+    gestor.session.add(nuevo_prestamo)
+    gestor.session.commit()
+    gestor.session.refresh(nuevo_prestamo)
+    return nuevo_prestamo
 
-@app.post("/publicacion")
-def guardar_publicacion(titulo: str, 
-				contenido: str, 
-				autor: str = "Anónimo"):
-    nueva_publicacion = {
-        "id": str(uuid()),
-        "titulo": titulo,
-        "autor": autor,
-        "contenido": contenido,
-        "fecha_creacion": datetime.now().isoformat(),
-        "fecha_publicacion": None
-    }
-    publicaciones.append(nueva_publicacion)
-    guarda_datos(publicaciones)
-    return nueva_publicacion
+@app.get("/prestamos/", response_model=List[PrestamoResponse])
+def listar_prestamos():
+    return gestor.session.query(PrestamoDB).all()
 
-@app.get("/listado")
-def lee_listado():
-    return {"listado": publicaciones}
+# Інформація про користувача
+@app.get("/usuarios/{usuario_id}/info")
+def obtener_info_usuario(usuario_id: str):
+    return gestor.obtener_info_usuario(usuario_id)
 
-@app.get("/listado/{identificador}")
-def lee_publicacion_id(identificador: str):
-    for publicacion in publicaciones:
-        if publicacion["id"] == identificador:
-            return publicacion
-    raise HTTPException(status_code=404, 
-					    detail="Publicación no encontrada")
-
-@app.put("/actualizacion/{identificador}")
-def actualiza_publicacion(identificador: str, 
-						  titulo: str, 
-						  contenido: str, 
-						  autor: str = "Anónimo"):
-    for publicacion in publicaciones:
-        if publicacion["id"] == identificador:
-            publicacion["titulo"] = titulo
-            publicacion["contenido"] = contenido
-            publicacion["autor"] = autor
-            publicacion["fecha_publicacion"] = datetime.now().isoformat()
-            guarda_datos(publicaciones)
-            return publicacion
-    raise HTTPException(status_code=404, 
-					    detail="Publicación no encontrada")
-
-@app.delete("/borrado/{identificador}")
-def borra_publicacion(identificador: str):
-    for publicacion in publicaciones:
-        if publicacion["id"] == identificador:
-            publicaciones.remove(publicacion)
-            guarda_datos(publicaciones)
-            return {"mensaje": "Publicación eliminada"}
-    raise HTTPException(status_code=404, 
-					    detail="Publicación no encontrada")
+if __name__ == "__main__":
+    uvicorn.run("aplicacion:app", host="0.0.0.0", port=8000, reload=True)

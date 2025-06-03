@@ -1,7 +1,7 @@
 # GestorBiblioteca.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from modelos import Base, UsuarioDB, MaterialDB, PrestamoDB
+from biblioteca.modelos import Base, UsuarioDB, MaterialDB, PrestamoDB
 from datetime import datetime, timedelta
 import uuid
 import os
